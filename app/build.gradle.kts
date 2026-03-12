@@ -43,6 +43,30 @@ android {
         compose = true
     }
 
+    // Split APK per ABI — lebih kecil, RAM lebih ringan
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            isUniversalApk = true  // juga hasilkan universal APK sebagai fallback
+        }
+    }
+
+    // VersionCode unik per ABI agar bisa upload ke Play Store
+    val abiCodes = mapOf("armeabi-v7a" to 1, "x86" to 2, "arm64-v8a" to 3, "x86_64" to 4)
+    androidComponents {
+        onVariants { variant ->
+            variant.outputs.forEach { output ->
+                val abiFilter = output.filters.find {
+                    it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI
+                }?.identifier
+                val abiCode = abiCodes[abiFilter] ?: 0
+                output.versionCode.set((output.versionCode.get() ?: 1) * 10 + abiCode)
+            }
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
