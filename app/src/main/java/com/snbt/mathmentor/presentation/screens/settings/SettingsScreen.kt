@@ -27,8 +27,9 @@ class SettingsViewModel @Inject constructor(
     private val userPreferences: UserPreferences,
     private val repository: SNBTRepository
 ) : ViewModel() {
+
     val isDarkMode: StateFlow<Boolean> = userPreferences.isDarkMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun toggleDarkMode(enabled: Boolean) = viewModelScope.launch {
         userPreferences.setDarkMode(enabled)
@@ -36,8 +37,8 @@ class SettingsViewModel @Inject constructor(
 
     fun resetProgress() = viewModelScope.launch {
         repository.resetProgress()
-        userPreferences.resetAll()
-        userPreferences.setDbInitialized()
+        // Jangan reset onboarding & db_initialized agar tidak kembali ke onboarding
+        userPreferences.setDarkMode(false)
     }
 }
 
@@ -53,16 +54,22 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("⚙️ Pengaturan", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Kembali") } }
+                title = { Text("Pengaturan", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, "Kembali")
+                    }
+                }
             )
         }
     ) { padding ->
         Column(
-            Modifier.padding(padding).padding(16.dp).fillMaxSize(),
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Dark Mode
             Card(Modifier.fillMaxWidth()) {
                 Row(
                     Modifier.padding(16.dp).fillMaxWidth(),
@@ -74,17 +81,23 @@ fun SettingsScreen(
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text("Mode Gelap", fontWeight = FontWeight.Medium)
-                            Text("Nyaman di malam hari", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.6f))
+                            Text(
+                                "Nyaman di malam hari",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+                            )
                         }
                     }
-                    Switch(checked = isDarkMode, onCheckedChange = { viewModel.toggleDarkMode(it) })
+                    Switch(
+                        checked = isDarkMode,
+                        onCheckedChange = { viewModel.toggleDarkMode(it) }
+                    )
                 }
             }
 
-            // App Info
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("ℹ️ Tentang Aplikasi", fontWeight = FontWeight.Bold)
+                    Text("Tentang Aplikasi", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     InfoRow("Versi", "1.0.0")
                     InfoRow("Program", "38 Hari UTBK SNBT 2026")
@@ -92,7 +105,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Notifications
             Card(Modifier.fillMaxWidth()) {
                 Row(
                     Modifier.padding(16.dp).fillMaxWidth(),
@@ -102,7 +114,11 @@ fun SettingsScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text("Pengingat Harian", fontWeight = FontWeight.Medium)
-                        Text("Notifikasi otomatis setiap pukul 07.00 WIB", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.6f))
+                        Text(
+                            "Notifikasi otomatis setiap pukul 07.00 WIB",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+                        )
                     }
                     Spacer(Modifier.weight(1f))
                     Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.secondary)
@@ -111,15 +127,16 @@ fun SettingsScreen(
 
             Spacer(Modifier.weight(1f))
 
-            // Reset Button
             OutlinedButton(
                 onClick = { showResetDialog = true },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
             ) {
                 Icon(Icons.Default.RestartAlt, null)
                 Spacer(Modifier.width(8.dp))
-                Text("⚠️ Reset Semua Progress")
+                Text("Reset Semua Progress")
             }
         }
     }
@@ -127,23 +144,39 @@ fun SettingsScreen(
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
-            title = { Text("⚠️ Reset Progress?") },
-            text = { Text("Semua progress 38 hari akan dihapus. Aksi ini tidak bisa dibatalkan. Yakin?") },
+            title = { Text("Reset Progress?") },
+            text = {
+                Text("Semua progress 38 hari akan dihapus. Aksi ini tidak bisa dibatalkan.")
+            },
             confirmButton = {
                 Button(
-                    onClick = { viewModel.resetProgress(); showResetDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    onClick = {
+                        viewModel.resetProgress()
+                        showResetDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
                 ) { Text("Ya, Reset") }
             },
-            dismissButton = { TextButton(onClick = { showResetDialog = false }) { Text("Batal") } }
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) { Text("Batal") }
+            }
         )
     }
 }
 
 @Composable
 private fun InfoRow(label: String, value: String) {
-    Row(Modifier.padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("$label:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.6f))
+    Row(
+        Modifier.padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+        )
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
     }
 }

@@ -24,7 +24,14 @@ class SNBTRepositoryImpl @Inject constructor(
     override fun getAllDayProgress(): Flow<List<DayProgress>> =
         dayDao.getAllDays().map { entities ->
             entities.map { e ->
-                DayProgress(e.dayNumber, e.title, e.isCompleted, e.score, e.timeSpent, if (e.dateCompleted > 0) e.dateCompleted else null)
+                DayProgress(
+                    dayNumber = e.dayNumber,
+                    title = e.title,
+                    isCompleted = e.isCompleted,
+                    score = e.score,
+                    timeSpentMinutes = e.timeSpent,
+                    dateCompleted = if (e.dateCompleted > 0) e.dateCompleted else null
+                )
             }
         }
 
@@ -56,22 +63,19 @@ class SNBTRepositoryImpl @Inject constructor(
     }
 
     override suspend fun initializeDatabase() {
-        val existing = dayDao.getCompletedDaysCountOnce()
-        // Only seed if table is empty
-        val all = dayDao.getAllDays()
-        // Insert all days if first launch
-        dayDao.insertAll(RoadmapDataSource.getAllDayEntities())
+        // Hanya insert jika tabel benar-benar kosong (first launch)
+        val existingCount = dayDao.getCompletedDaysCountOnce()
+        val totalCount = dayDao.getTotalDaysCount()
+        if (totalCount == 0) {
+            dayDao.insertAll(RoadmapDataSource.getAllDayEntities())
+        }
     }
 
     override fun getErrorLogs(): Flow<List<ErrorLog>> =
-        errorLogDao.getAllErrorLogs().map { list ->
-            list.map { it.toDomain() }
-        }
+        errorLogDao.getAllErrorLogs().map { list -> list.map { it.toDomain() } }
 
     override fun getErrorLogsByDay(dayNumber: Int): Flow<List<ErrorLog>> =
-        errorLogDao.getErrorLogsByDay(dayNumber).map { list ->
-            list.map { it.toDomain() }
-        }
+        errorLogDao.getErrorLogsByDay(dayNumber).map { list -> list.map { it.toDomain() } }
 
     override suspend fun addErrorLog(errorLog: ErrorLog) {
         errorLogDao.insertErrorLog(
@@ -97,25 +101,25 @@ class SNBTRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun getQuizResult(dayNumber: Int): QuizResult? {
-        return quizResultDao.getQuizResultByDay(dayNumber)?.let {
+    override suspend fun getQuizResult(dayNumber: Int): QuizResult? =
+        quizResultDao.getQuizResultByDay(dayNumber)?.let {
             QuizResult(it.dayNumber, it.totalScore, it.totalQuestions, it.timestamp)
         }
-    }
 
     override suspend fun getStreak(): Int {
         val completedDays = dayDao.getCompletedDays()
         if (completedDays.isEmpty()) return 0
         var streak = 0
+        val dayMs = 86_400_000L
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
-        val dayMs = 86_400_000L
         var expected = today
         for (day in completedDays) {
-            val completedAt = day.dateCompleted / dayMs * dayMs
-            if (completedAt >= expected - dayMs) {
+            if (day.dateCompleted == 0L) continue
+            val completedDay = (day.dateCompleted / dayMs) * dayMs
+            if (completedDay >= expected - dayMs) {
                 streak++
                 expected -= dayMs
             } else break
@@ -124,9 +128,9 @@ class SNBTRepositoryImpl @Inject constructor(
     }
 
     override suspend fun resetProgress() {
-        val days = RoadmapDataSource.getAllDayEntities()
-        dayDao.insertAll(days)
+        dayDao.resetAllDays()
     }
 
-    private fun ErrorLogEntity.toDomain() = ErrorLog(id, dayNumber, questionId, userAnswer, correctAnswer, note, timestamp)
+    private fun ErrorLogEntity.toDomain() =
+        ErrorLog(id, dayNumber, questionId, userAnswer, correctAnswer, note, timestamp)
 }

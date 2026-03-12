@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.snbt.mathmentor.presentation.navigation.Screen
 import com.snbt.mathmentor.presentation.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
@@ -22,16 +23,24 @@ fun SplashScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val scale = remember { Animatable(0.5f) }
-    val isOnboardingDone by viewModel.isOnboardingDone.collectAsState(initial = null)
+    val isOnboardingDone by viewModel.isOnboardingDone.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Animasi masuk
     LaunchedEffect(Unit) {
-        scale.animateTo(1f, animationSpec = spring(dampingRatio = 0.4f, stiffness = 300f))
+        scale.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = 0.4f, stiffness = 300f)
+        )
     }
 
-    LaunchedEffect(isOnboardingDone) {
-        if (isOnboardingDone != null) {
-            delay(1500)
-            onNavigateNext(if (isOnboardingDone == true) Screen.Home.route else Screen.Onboarding.route)
+    // Navigasi setelah DB selesai diinisialisasi
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            delay(800)
+            onNavigateNext(
+                if (isOnboardingDone) Screen.Home.route else Screen.Onboarding.route
+            )
         }
     }
 
@@ -53,13 +62,18 @@ fun SplashScreen(
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onPrimary
             )
+            Spacer(Modifier.height(4.dp))
             Text(
                 "38 Hari Menuju UTBK 2026",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
             )
-            Spacer(Modifier.height(32.dp))
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+            Spacer(Modifier.height(48.dp))
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

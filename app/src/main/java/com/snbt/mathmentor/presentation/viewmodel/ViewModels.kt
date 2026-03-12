@@ -14,7 +14,8 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val userPreferences: UserPreferences
 ) : ViewModel() {
-    val isDarkMode: Flow<Boolean> = userPreferences.isDarkMode
+    val isDarkMode: StateFlow<Boolean> = userPreferences.isDarkMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 }
 
 data class HomeUiState(
@@ -31,7 +32,8 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    val isOnboardingDone: Flow<Boolean> = userPreferences.isOnboardingDone
+    val isOnboardingDone: StateFlow<Boolean> = userPreferences.isOnboardingDone
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     init {
         initializeAndLoad()
@@ -39,7 +41,6 @@ class HomeViewModel @Inject constructor(
 
     private fun initializeAndLoad() {
         viewModelScope.launch {
-            // Initialize DB on first launch
             val initialized = userPreferences.isDbInitialized.first()
             if (!initialized) {
                 repository.initializeDatabase()
@@ -49,22 +50,28 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun setOnboardingDone() {
+        viewModelScope.launch {
+            userPreferences.setOnboardingDone()
+        }
+    }
+
     private fun loadStats() {
         combine(
             repository.getCompletedDaysCount(),
             repository.getAverageScore(),
             repository.getTotalQuestionsAnswered()
-        ) { completed, avg, total ->
-            Triple(completed, avg, total)
-        }.onEach { (completed, avg, total) ->
-            val currentDay = repository.getCurrentDay()
-            val streak = repository.getStreak()
-            _uiState.update {
-                it.copy(
-                    stats = HomeStats(completed, 38, streak, total, avg, currentDay),
-                    isLoading = false
-                )
+        ) { completed, avg, total -> Triple(completed, avg, total) }
+            .onEach { (completed, avg, total) ->
+                val currentDay = repository.getCurrentDay()
+                val streak = repository.getStreak()
+                _uiState.update {
+                    it.copy(
+                        stats = HomeStats(completed, 38, streak, total, avg, currentDay),
+                        isLoading = false
+                    )
+                }
             }
-        }.launchIn(viewModelScope)
+            .launchIn(viewModelScope)
     }
 }

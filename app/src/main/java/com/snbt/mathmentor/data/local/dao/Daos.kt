@@ -17,10 +17,16 @@ interface DayDao {
     @Query("SELECT COUNT(*) FROM days WHERE isCompleted = 1")
     fun getCompletedDaysCount(): Flow<Int>
 
-    @Query("SELECT * FROM days WHERE isCompleted = 1 ORDER BY dayNumber DESC")
+    @Query("SELECT COUNT(*) FROM days WHERE isCompleted = 1")
+    suspend fun getCompletedDaysCountOnce(): Int
+
+    @Query("SELECT COUNT(*) FROM days")
+    suspend fun getTotalDaysCount(): Int
+
+    @Query("SELECT * FROM days WHERE isCompleted = 1 ORDER BY dateCompleted DESC")
     suspend fun getCompletedDays(): List<DayEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(days: List<DayEntity>)
 
     @Update
@@ -29,8 +35,8 @@ interface DayDao {
     @Query("SELECT AVG(score) FROM days WHERE isCompleted = 1 AND score > 0")
     fun getAverageScore(): Flow<Float?>
 
-    @Query("SELECT COUNT(*) FROM days WHERE isCompleted = 1")
-    suspend fun getCompletedDaysCountOnce(): Int
+    @Query("UPDATE days SET isCompleted = 0, score = 0, timeSpent = 0, dateCompleted = 0")
+    suspend fun resetAllDays()
 }
 
 @Dao
@@ -56,12 +62,12 @@ interface QuizResultDao {
     @Query("SELECT * FROM quiz_results ORDER BY timestamp DESC")
     fun getAllQuizResults(): Flow<List<QuizResultEntity>>
 
-    @Query("SELECT * FROM quiz_results WHERE dayNumber = :dayNumber")
+    @Query("SELECT * FROM quiz_results WHERE dayNumber = :dayNumber LIMIT 1")
     suspend fun getQuizResultByDay(dayNumber: Int): QuizResultEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuizResult(result: QuizResultEntity)
 
-    @Query("SELECT SUM(totalScore) FROM quiz_results")
+    @Query("SELECT SUM(totalQuestions) FROM quiz_results")
     fun getTotalQuestionsAnswered(): Flow<Int?>
 }

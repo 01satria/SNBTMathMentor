@@ -4,10 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.snbt.mathmentor.presentation.navigation.SNBTNavHost
 import com.snbt.mathmentor.presentation.navigation.Screen
@@ -23,7 +22,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val viewModel: MainViewModel = hiltViewModel()
-            val isDarkMode by viewModel.isDarkMode.collectAsState(initial = isSystemInDarkTheme())
+            val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
 
             SNBTMathMentorTheme(darkTheme = isDarkMode) {
                 val navController = rememberNavController()

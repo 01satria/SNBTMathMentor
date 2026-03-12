@@ -1,18 +1,30 @@
-name: Build SNBT Math Mentor APK
+name: Build & Release SNBT Math Mentor
 
 on:
   push:
     branches: [ main, master ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Buat GitHub Release?'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
-  build:
+  # ─────────────────────────────────────────
+  # JOB 1: Build Debug APK (setiap push/PR)
+  # ─────────────────────────────────────────
+  build-debug:
+    name: 🐛 Build Debug APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
       - name: ☕ Setup JDK 17
@@ -25,47 +37,53 @@ jobs:
       - name: 🔧 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📦 Cache Gradle packages
+      - name: 📦 Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - name: 📥 Download gradle-wrapper.jar
         run: |
           mkdir -p gradle/wrapper
-          curl -sL "https://github.com/gradle/gradle/raw/v8.9.0/gradle/wrapper/gradle-wrapper.jar" \
+          curl -fsSL "https://github.com/gradle/gradle/raw/v8.9.0/gradle/wrapper/gradle-wrapper.jar" \
             -o gradle/wrapper/gradle-wrapper.jar
 
-      - name: 🔑 Grant execute permission for gradlew
+      - name: 🔑 Grant permission gradlew
         run: chmod +x gradlew
 
-      - name: 🐛 Build Debug APK (split ABI)
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: 🐛 Build Debug (split ABI)
+        run: ./gradlew assembleDebug --no-daemon --build-cache
 
-      - name: 📋 List generated APKs
-        run: find app/build/outputs/apk -name "*.apk" | sort
+      - name: 📋 List APKs
+        run: find app/build/outputs/apk/debug -name "*.apk" | sort
 
-      - name: 📤 Upload Debug APKs
+      - name: 📤 Upload Debug Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SNBT-MathMentor-Debug-AllABI
+          name: debug-apks
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
-  release:
+  # ─────────────────────────────────────────
+  # JOB 2: Build Release + Publish ke GitHub Release
+  # ─────────────────────────────────────────
+  build-release:
+    name: 🚀 Build Release APK
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    needs: build
+    if: |
+      github.event_name == 'push' &&
+      (startsWith(github.ref, 'refs/tags/v') ||
+       github.ref == 'refs/heads/main' ||
+       github.ref == 'refs/heads/master')
     env:
       HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
       - name: ☕ Setup JDK 17
@@ -78,72 +96,103 @@ jobs:
       - name: 🔧 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📦 Cache Gradle packages
+      - name: 📦 Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - name: 📥 Download gradle-wrapper.jar
         run: |
           mkdir -p gradle/wrapper
-          curl -sL "https://github.com/gradle/gradle/raw/v8.9.0/gradle/wrapper/gradle-wrapper.jar" \
+          curl -fsSL "https://github.com/gradle/gradle/raw/v8.9.0/gradle/wrapper/gradle-wrapper.jar" \
             -o gradle/wrapper/gradle-wrapper.jar
 
-      - name: 🔑 Grant execute permission for gradlew
+      - name: 🔑 Grant permission gradlew
         run: chmod +x gradlew
 
       - name: 🔐 Decode Keystore
         if: env.HAS_KEYSTORE == 'true'
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: echo "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore
+          echo "Keystore decoded successfully"
 
-      - name: 🚀 Build Release APK — signed
+      - name: 🚀 Build Release APK (signed)
         if: env.HAS_KEYSTORE == 'true'
         run: |
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=release.keystore \
+            -Pandroid.injected.signing.store.file=$(pwd)/app/release.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }} \
-            --no-daemon
+            --no-daemon --build-cache
 
-      - name: 🚀 Build Release APK — unsigned fallback
+      - name: 🚀 Build Release APK (unsigned)
         if: env.HAS_KEYSTORE != 'true'
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --build-cache
 
-      - name: 📋 List generated Release APKs
+      - name: 📋 List Release APKs
         run: find app/build/outputs/apk/release -name "*.apk" | sort
 
-      - name: 📤 Upload arm64-v8a
+      - name: 🏷️ Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | grep -oP '"[^"]+"' | tr -d '"' | head -1)
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date +'%Y%m%d')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}-${DATE}-${COMMIT}" >> $GITHUB_OUTPUT
+          echo "release_name=SNBT Math Mentor v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: 📤 Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SNBT-MathMentor-Release-arm64-v8a
-          path: app/build/outputs/apk/release/*arm64*.apk
+          name: release-apks-${{ steps.version.outputs.version }}
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-      - name: 📤 Upload armeabi-v7a
-        uses: actions/upload-artifact@v4
+      # ── Publish ke GitHub Release ────────
+      - name: 🎁 Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
         with:
-          name: SNBT-MathMentor-Release-armeabi-v7a
-          path: app/build/outputs/apk/release/*armeabi*.apk
-          retention-days: 30
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.release_name }}
+          draft: false
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          generate_release_notes: true
+          body: |
+            ## 📱 SNBT Math Mentor - ${{ steps.version.outputs.release_name }}
 
-      - name: 📤 Upload x86_64
-        uses: actions/upload-artifact@v4
-        with:
-          name: SNBT-MathMentor-Release-x86_64
-          path: app/build/outputs/apk/release/*x86_64*.apk
-          retention-days: 30
+            Program intensif **38 Hari** untuk menaklukkan Matematika UTBK SNBT 2026.
 
-      - name: 📤 Upload Universal APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: SNBT-MathMentor-Release-universal
-          path: app/build/outputs/apk/release/*universal*.apk
-          retention-days: 30
+            ### 📥 Pilih APK sesuai device kamu:
+            | File | Device |
+            |------|--------|
+            | `*arm64-v8a*` | HP Android modern (2017+) — **PILIH INI** |
+            | `*armeabi-v7a*` | HP Android lama (32-bit) |
+            | `*x86_64*` | Emulator / PC Android |
+            | `*universal*` | Semua device (ukuran lebih besar) |
+
+            ### ✨ Fitur
+            - 38 hari materi terstruktur dari dasar sampai tryout
+            - Quiz harian dengan auto-scoring
+            - Error log untuk review kesalahan
+            - Timer belajar & reminder harian 07.00 WIB
+            - Dark mode support
+            - Split ABI = ukuran APK lebih kecil & RAM ringan
+
+            ### 📋 Cara Install
+            1. Download APK sesuai device
+            2. Aktifkan "Install dari sumber tidak dikenal" di Settings
+            3. Buka file APK dan install
+
+            ---
+            Build: `${{ github.sha }}` | ${{ github.run_number }}
+          files: |
+            app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

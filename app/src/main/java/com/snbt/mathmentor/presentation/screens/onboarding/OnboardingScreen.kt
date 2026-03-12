@@ -5,22 +5,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.snbt.mathmentor.presentation.viewmodel.HomeViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun OnboardingScreen(
     onDone: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val scope = rememberCoroutineScope()
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -47,7 +43,11 @@ fun OnboardingScreen(
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(20.dp)) {
-                Text("📜 Aturan Program 38 Hari", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "📜 Aturan Program 38 Hari",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(Modifier.height(12.dp))
                 RuleItem("📅", "Belajar setiap hari tanpa skip — konsistensi adalah kunci!")
                 RuleItem("🔒", "Hari berikutnya hanya terbuka setelah hari ini selesai")
@@ -65,14 +65,18 @@ fun OnboardingScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Column(Modifier.padding(20.dp)) {
-                Text("🗓️ Roadmap 38 Hari", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "🗓️ Roadmap 38 Hari",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(Modifier.height(8.dp))
-                PhaseItem("Fase 1 (Hari 1–8)", "Aritmetika & Aljabar Dasar")
-                PhaseItem("Fase 2 (Hari 9–12)", "Geometri Dasar")
-                PhaseItem("Fase 3 (Hari 13–22)", "Aljabar & Geometri Lanjutan")
-                PhaseItem("Fase 4 (Hari 23–28)", "Statistika & Peluang")
-                PhaseItem("Fase 5 (Hari 29–35)", "Penalaran Matematika")
-                PhaseItem("Fase 6 (Hari 36–38)", "Tryout & Final Review")
+                PhaseItem("Fase 1 (Hari 1-8)", "Aritmetika & Aljabar Dasar")
+                PhaseItem("Fase 2 (Hari 9-12)", "Geometri Dasar")
+                PhaseItem("Fase 3 (Hari 13-22)", "Aljabar & Geometri Lanjutan")
+                PhaseItem("Fase 4 (Hari 23-28)", "Statistika & Peluang")
+                PhaseItem("Fase 5 (Hari 29-35)", "Penalaran Matematika")
+                PhaseItem("Fase 6 (Hari 36-38)", "Tryout & Final Review")
             }
         }
 
@@ -80,12 +84,13 @@ fun OnboardingScreen(
 
         Button(
             onClick = {
-                scope.launch {
-                    viewModel.isOnboardingDone  // trigger
-                    onDone()
-                }
+                // Simpan status onboarding selesai, lalu navigasi
+                viewModel.setOnboardingDone()
+                onDone()
             },
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
         ) {
             Text("🚀 Aku Siap Belajar! Mulai Hari 1", style = MaterialTheme.typography.titleMedium)
         }
@@ -105,11 +110,14 @@ private fun RuleItem(emoji: String, text: String) {
 @Composable
 private fun PhaseItem(phase: String, desc: String) {
     Row(Modifier.padding(vertical = 3.dp)) {
-        Text("•", color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(8.dp))
+        Text("• ", color = MaterialTheme.colorScheme.primary)
         Column {
             Text(phase, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.6f))
+            Text(
+                desc,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+            )
         }
     }
 }

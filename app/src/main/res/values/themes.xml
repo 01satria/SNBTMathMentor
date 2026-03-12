@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SNBTMathMentor" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Base theme yang kompatibel dengan Jetpack Compose -->
+    <style name="Theme.SNBTMathMentor" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+    <!-- Splash screen theme -->
+    <style name="Theme.SNBTMathMentor.Splash" parent="Theme.SNBTMathMentor">
+        <item name="android:windowBackground">@color/ic_launcher_background</item>
+    </style>
 </resources>
