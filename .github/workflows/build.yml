@@ -8,20 +8,20 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
-    inputs:
-      create_release:
-        description: 'Buat GitHub Release?'
-        required: false
-        default: 'false'
-        type: boolean
+
+# Permission global untuk seluruh workflow
+permissions:
+  contents: write
 
 jobs:
   # ─────────────────────────────────────────
-  # JOB 1: Build Debug APK (setiap push/PR)
+  # JOB 1: Build Debug APK
   # ─────────────────────────────────────────
   build-debug:
     name: 🐛 Build Debug APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: 📥 Checkout
@@ -69,11 +69,13 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────
-  # JOB 2: Build Release + Publish ke GitHub Release
+  # JOB 2: Build Release + GitHub Release
   # ─────────────────────────────────────────
   build-release:
-    name: 🚀 Build Release APK
+    name: 🚀 Build Release & Publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # wajib untuk buat GitHub Release
     if: |
       github.event_name == 'push' &&
       (startsWith(github.ref, 'refs/tags/v') ||
@@ -118,7 +120,6 @@ jobs:
         if: env.HAS_KEYSTORE == 'true'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore
-          echo "Keystore decoded successfully"
 
       - name: 🚀 Build Release APK (signed)
         if: env.HAS_KEYSTORE == 'true'
@@ -143,56 +144,55 @@ jobs:
           VERSION=$(grep 'versionName' app/build.gradle.kts | grep -oP '"[^"]+"' | tr -d '"' | head -1)
           COMMIT=$(git rev-parse --short HEAD)
           DATE=$(date +'%Y%m%d')
+          IS_TAG=${{ startsWith(github.ref, 'refs/tags/') }}
+
+          if [ "$IS_TAG" = "true" ]; then
+            TAG_NAME="${{ github.ref_name }}"
+            IS_PRE="false"
+          else
+            TAG_NAME="v${VERSION}-${DATE}-${COMMIT}"
+            IS_PRE="true"
+          fi
+
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "tag=v${VERSION}-${DATE}-${COMMIT}" >> $GITHUB_OUTPUT
-          echo "release_name=SNBT Math Mentor v${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "is_prerelease=${IS_PRE}" >> $GITHUB_OUTPUT
 
-      - name: 📤 Upload Release Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apks-${{ steps.version.outputs.version }}
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 30
-
-      # ── Publish ke GitHub Release ────────
       - name: 🎁 Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.release_name }}
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: "SNBT Math Mentor ${{ steps.version.outputs.tag_name }}"
           draft: false
-          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          generate_release_notes: true
+          prerelease: ${{ steps.version.outputs.is_prerelease == 'true' }}
+          generate_release_notes: false
           body: |
-            ## 📱 SNBT Math Mentor - ${{ steps.version.outputs.release_name }}
+            ## 📱 SNBT Math Mentor ${{ steps.version.outputs.tag_name }}
 
             Program intensif **38 Hari** untuk menaklukkan Matematika UTBK SNBT 2026.
 
             ### 📥 Pilih APK sesuai device kamu:
-            | File | Device |
-            |------|--------|
-            | `*arm64-v8a*` | HP Android modern (2017+) — **PILIH INI** |
-            | `*armeabi-v7a*` | HP Android lama (32-bit) |
-            | `*x86_64*` | Emulator / PC Android |
+            | File | Target Device |
+            |------|--------------|
+            | `*arm64-v8a*` | HP Android modern 2017+ — **PILIH INI** |
+            | `*armeabi-v7a*` | HP Android lama 32-bit |
+            | `*x86_64*` | Emulator / BlueStacks |
             | `*universal*` | Semua device (ukuran lebih besar) |
 
             ### ✨ Fitur
-            - 38 hari materi terstruktur dari dasar sampai tryout
-            - Quiz harian dengan auto-scoring
-            - Error log untuk review kesalahan
-            - Timer belajar & reminder harian 07.00 WIB
+            - 38 hari materi terstruktur: Aritmetika → Geometri → Statistika → Penalaran
+            - Quiz harian dengan auto-scoring & timer
+            - Error Log untuk review kesalahan
+            - Reminder harian 07.00 WIB
             - Dark mode support
-            - Split ABI = ukuran APK lebih kecil & RAM ringan
+            - Split ABI — APK lebih kecil, RAM ringan
 
             ### 📋 Cara Install
-            1. Download APK sesuai device
-            2. Aktifkan "Install dari sumber tidak dikenal" di Settings
+            1. Download APK sesuai device kamu
+            2. Buka **Settings → Install unknown apps** → aktifkan
             3. Buka file APK dan install
 
             ---
-            Build: `${{ github.sha }}` | ${{ github.run_number }}
-          files: |
-            app/build/outputs/apk/release/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            🔨 Build `${{ github.sha }}` | Run #${{ github.run_number }}
+          files: app/build/outputs/apk/release/*.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
