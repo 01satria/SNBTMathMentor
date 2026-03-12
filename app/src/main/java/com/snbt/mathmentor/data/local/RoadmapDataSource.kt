@@ -77,7 +77,7 @@ object RoadmapDataSource {
 ## 📐 Operasi Bilangan Dasar
 
 ### Urutan Operasi (BODMAS)
-**B**rackets → **O**rder (pangkat) → **D**ivision → **M**ultiplication → **A**ddition → **S**ubtraction
+Brackets → Order (pangkat) → Division → Multiplication → Addition → Subtraction
 
 ### Bilangan Bulat
 - Penjumlahan: tanda sama → tambah, tanda beda → kurang
@@ -86,7 +86,7 @@ object RoadmapDataSource {
 ## 🍕 Pecahan
 
 ### Pecahan Biasa
-$$\frac{a}{b} + \frac{c}{d} = \frac{ad + bc}{bd}$$
+a/b + c/d = (ad + bc) / bd
 
 ### KPK & FPB
 - KPK digunakan untuk menyamakan penyebut
@@ -143,22 +143,22 @@ $$\frac{a}{b} + \frac{c}{d} = \frac{ad + bc}{bd}$$
 ## 📊 Persen
 
 ### Konsep Dasar
-$$\text{Persen} = \frac{\text{Bagian}}{\text{Total}} \times 100\%$$
+Persen = (Bagian / Total) x 100%
 
 ### Kenaikan & Penurunan
-- Kenaikan % = (Nilai baru - Nilai awal)/Nilai awal × 100%
-- Penurunan % = (Nilai awal - Nilai baru)/Nilai awal × 100%
+- Kenaikan % = (Nilai baru - Nilai awal) / Nilai awal x 100%
+- Penurunan % = (Nilai awal - Nilai baru) / Nilai awal x 100%
 
 ## ⚖️ Perbandingan
 
 ### Senilai
-Jika a naik → b naik: a₁/b₁ = a₂/b₂
+Jika a naik maka b naik: a1/b1 = a2/b2
 
-### Berbalik Nilai  
-Jika a naik → b turun: a₁×b₁ = a₂×b₂
+### Berbalik Nilai
+Jika a naik maka b turun: a1 x b1 = a2 x b2
 
 ## 🔢 Rasio
-Rasio a:b:c → bagian a = a/(a+b+c) × total
+Bagian a = (nilai a / total rasio) x jumlah keseluruhan
         """.trimIndent(),
         keyFormulas = listOf(
             "Persen = (Bagian/Total) × 100%",
@@ -197,23 +197,23 @@ Rasio a:b:c → bagian a = a/(a+b+c) × total
         materialSummary = """
 ## 🏪 Untung & Rugi
 
-$$\text{Untung} = \text{Harga Jual} - \text{Harga Beli}$$
-$$\% \text{Untung} = \frac{\text{Untung}}{\text{Harga Beli}} \times 100\%$$
+Untung = Harga Jual - Harga Beli
+%Untung = (Untung / Harga Beli) x 100%
 
 ## 🏦 Bunga Tunggal
 
-$$\text{Bunga} = \frac{p \times r \times t}{100}$$
+Bunga = (p x r x t) / 100
 
 Dimana: p = pokok, r = suku bunga (%), t = waktu (tahun)
 
 ## 💰 Bunga Majemuk
 
-$$M = P(1 + r)^t$$
+M = P x (1 + r)^t
 
 ## 🧾 Pajak & Diskon
 
-- Harga setelah diskon = Harga × (1 - diskon%)
-- Harga setelah pajak = Harga × (1 + pajak%)
+- Harga setelah diskon = Harga x (1 - diskon%)
+- Harga setelah pajak = Harga x (1 + pajak%)
 - Diskon bertingkat: kalikan faktor satu per satu
         """.trimIndent(),
         keyFormulas = listOf(
