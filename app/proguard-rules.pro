@@ -1,0 +1,4 @@
+-keep class com.snbt.mathmentor.data.local.entity.** { *; }
+-keep class com.snbt.mathmentor.domain.model.** { *; }
+-keepattributes *Annotation*
+-dontwarn kotlinx.**
