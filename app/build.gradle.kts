@@ -20,11 +20,13 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+            // JANGAN pakai applicationIdSuffix — bisa bikin "package invalid"
+            // applicationId tetap com.snbt.mathmentor
             isDebuggable = true
+            isMinifyEnabled = false
         }
         release {
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -48,7 +50,7 @@ android {
         compose = true
     }
 
-    // Split APK per ABI — APK lebih kecil, RAM lebih ringan
+    // Split APK per ABI
     splits {
         abi {
             isEnable = true

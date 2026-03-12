@@ -33,10 +33,13 @@
             </intent-filter>
         </receiver>
 
-        <!-- Disable default WorkManager init agar pakai HiltWorkerFactory -->
+        <!--
+            Hardcode authority dengan package name penuh.
+            Jangan pakai ${applicationId} — bisa conflict saat debug/release.
+        -->
         <provider
             android:name="androidx.startup.InitializationProvider"
-            android:authorities="${applicationId}.androidx-startup"
+            android:authorities="com.snbt.mathmentor.androidx-startup"
             android:exported="false"
             tools:node="merge">
             <meta-data
